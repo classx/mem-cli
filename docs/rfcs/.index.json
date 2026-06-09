@@ -1,0 +1,29 @@
+{
+  "rfcs": [
+    {
+      "number": "0001",
+      "title": "RFC-0001: Проект Rust + SQLite",
+      "status": "implemented",
+      "dependencies": [],
+      "superseded_by": null,
+      "links": [],
+      "mtime": "1780997228",
+      "content_hash": "87024d24ae975efdb77afe39f6542467623d5ef00f9ee808a6bafff6b74d7744"
+    },
+    {
+      "number": "0002",
+      "title": "RFC-0002: Личное хранение БД вне репозитория",
+      "status": "implemented",
+      "dependencies": [
+        "1"
+      ],
+      "superseded_by": null,
+      "links": [
+        "src/db.rs",
+        "src/main.rs"
+      ],
+      "mtime": "1781003854",
+      "content_hash": "831bde33f0f653c7597ad54da2128310ae9980bbadae4460e35e224032d9958a"
+    }
+  ]
+}
