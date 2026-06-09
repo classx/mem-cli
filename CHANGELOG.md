@@ -60,7 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `README.md` with installation, usage, storage layout, development commands,
-  and a "Подключение к Copilot" (Copilot integration) section.
+  and a "Copilot Integration" section.
 
 ### Changed
 - RFC-0001 marked as implemented.

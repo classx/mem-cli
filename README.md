@@ -1,121 +1,130 @@
 # mem-cli
 
-`mem-cli` — минимальный CLI на Rust + SQLite для хранения и быстрого
-восстановления долговременного контекста проекта между сессиями.
+`mem-cli` is a minimal Rust + SQLite CLI for storing and quickly restoring long-term project context between sessions.
 
-Реализация [RFC-0001](docs/rfcs/0001.md) (план — [PLAN-0001](docs/PLAN-0001.md)).
+This project implements [RFC-0001](docs/rfcs/0001.md) (plan: [PLAN-0001](docs/PLAN-0001.md)).
 
-## Возможности
+## Quick Start
 
-Четыре сущности контекста:
+```sh
+# 1) Build the binary
+cargo build --release
 
-- `facts` — стабильные факты о проекте;
-- `decisions` — принятые технические решения;
-- `commands` — проверенные команды build/test/lint;
-- `modules` — краткое описание модулей и их ответственности.
+# 2) (Optional) Make it available in PATH
+cp target/release/mem-cli ~/.local/bin/
 
-## Установка
+# 3) Initialize in your repository
+mem-cli init "My Project"
+
+# 4) Add and read context
+mem-cli add facts "project uses Rust 2024 edition"
+mem-cli list facts
+```
+
+## Features
+
+Four context entities:
+
+- `facts` — stable facts about the project;
+- `decisions` — accepted technical decisions;
+- `commands` — verified build/test/lint commands;
+- `modules` — short descriptions of modules and their responsibilities.
+
+## Installation
 
 ```sh
 cargo build --release
-# бинарь: target/release/mem-cli
+# binary: target/release/mem-cli
 ```
 
-Опционально скопируйте бинарь в каталог из `PATH`:
+Optionally copy the binary into a directory from your `PATH`:
 
 ```sh
 cp target/release/mem-cli ~/.local/bin/
 ```
 
-## Хранилище
+## Storage
 
-Файл БД — `project_context.db`. Контекст у каждого разработчика **личный** и
-хранится **вне репозитория**. Каталог определяется по приоритету:
+The database file is `project_context.db`. Context is **personal** to each developer and is stored **outside the repository**. The directory is resolved in this order:
 
-1. переменная окружения `MEMORY_DB_DIR` (override для тестов/CI) — если задана;
-2. иначе — по маркеру проекта `.mem-project` (ищется вверх по дереву каталогов,
-   как `.git`): `${XDG_DATA_HOME:-~/.local/share}/mem/<slug>/`;
-3. иначе (нет маркера) — каталог `.memory/` в текущей директории (legacy).
+1. `MEMORY_DB_DIR` environment variable (override for tests/CI), if set.
+2. Otherwise, by the `.mem-project` project marker (searched upward through parent directories, like `.git`): `${XDG_DATA_HOME:-~/.local/share}/mem/<slug>/`.
+3. Otherwise (no marker), `.memory/` in the current directory (legacy).
 
-Слаг проекта (`<имя>-<случайный id>`) фиксируется в `.mem-project` при `init` и
-далее неизменен независимо от пути и реклонов. Каталог создаётся автоматически.
+The project slug (`<name>-<random-id>`) is written to `.mem-project` during `init` and then remains unchanged regardless of path changes or re-clones. The directory is created automatically.
 
-Файл `.mem-project` **коммитится в репозиторий**: слаг общий для всей команды,
-а сама БД у каждого разработчика остаётся локальной (в `$HOME`, вне репозитория).
+The `.mem-project` file is **committed to the repository**: the slug is shared by the whole team, while each developer’s database remains local (in `$HOME`, outside the repository).
 
-## Использование
+## Usage
 
 ```sh
-# инициализировать проект: создать маркер .mem-project, БД и схему
-mem-cli init "Имя проекта"
-# имя необязательно — по умолчанию берётся имя корневого каталога репозитория
+# initialize the project: create .mem-project marker, DB, and schema
+mem-cli init "Project Name"
+# name is optional — by default, the repository root directory name is used
 mem-cli init
 
-# показать путь к БД и статус (OK, если БД существует)
+# show the DB path and status (OK if the DB exists)
 mem-cli info
 
-# добавить записи
-mem-cli add facts "проект использует Rust 2024 edition"
-mem-cli add decisions "БД хранится в .memory/"
+# add records
+mem-cli add facts "project uses Rust 2024 edition"
+mem-cli add decisions "DB is stored in .memory/"
 mem-cli add commands "cargo test"
-mem-cli add modules "db: слой хранения и миграции"
+mem-cli add modules "db: storage and migrations layer"
 
-# вывести записи (таблица по умолчанию)
+# list records (table output by default)
 mem-cli list facts
-# вывод в JSON
+# JSON output
 mem-cli list facts --json
 
-# быстрые алиасы
+# quick aliases
 mem-cli decisions
 mem-cli modules --json
 
-# удаление
-mem-cli delete facts 1   # soft delete: выставляет deleted_at, скрывает из list
-mem-cli purge  facts 1   # hard delete: физически удаляет строку
+# deletion
+mem-cli delete facts 1   # soft delete: sets deleted_at, hides from list
+mem-cli purge  facts 1   # hard delete: physically removes the row
 
-# обновление (удалить старую запись + добавить новую)
-mem-cli update commands 1 "make build"          # soft delete старой + add
-mem-cli update commands 1 "make build" --hard   # purge старой + add
+# update (delete the old record + add a new one)
+mem-cli update commands 1 "make build"          # soft delete old + add
+mem-cli update commands 1 "make build" --hard   # hard delete old + add
 ```
 
-> Основной интерфейс работы с данными — `mem-cli`. Прямые SQL-запросы к
-> SQLite допустимы только для отладки и диагностики.
+> The primary interface for working with data is `mem-cli`. Direct SQL queries to
+> SQLite are allowed only for debugging and diagnostics.
 
-## Подключение к Copilot
+## Copilot Integration
 
-Идея: агент (например, GitHub Copilot CLI) в начале сессии читает контекст
-проекта через `mem-cli`, а по ходу работы дописывает новые факты и решения.
+At the start of a session, an agent (for example, GitHub Copilot CLI) can read project context via `mem-cli`, then append new facts and decisions as work progresses.
 
-1. Соберите и положите бинарь в `PATH` (см. «Установка»).
+1. Build the binary and put it in your `PATH` (see “Installation”).
 
-2. Зафиксируйте каталог БД для проекта, чтобы он был стабильным между
-   сессиями (например, в `.envrc`/окружении оболочки):
+2. Pin a stable DB directory for the project so it remains consistent across sessions (for example, in `.envrc` or your shell environment):
 
    ```sh
    export MEMORY_DB_DIR="$PWD/.memory"
    ```
 
-3. Добавьте инструкции для агента в `AGENTS.md` (или в custom instructions
-   Copilot) в корне проекта:
+3. Add agent instructions to `AGENTS.md` (or Copilot Custom Instructions) in the project root:
 
    ```markdown
-   ## Контекст проекта (mem-cli)
-   - В начале работы прочитать контекст:
+   ## Project context (mem-cli)
+   - At the start, read context:
      `mem-cli list facts`, `mem-cli decisions`, `mem-cli modules`,
      `mem-cli list commands`.
-   - Новые стабильные факты сохранять: `mem-cli add facts "..."`.
-   - Принятые технические решения: `mem-cli add decisions "..."`.
-   - Проверенные команды build/test/lint: `mem-cli add commands "..."`.
-   - Каталог БД задаётся переменной `MEMORY_DB_DIR` (по умолчанию `.memory/`).
+   - Save new stable facts: `mem-cli add facts "..."`.
+   - Save accepted technical decisions: `mem-cli add decisions "..."`.
+   - Save verified build/test/lint commands: `mem-cli add commands "..."`.
+   - The DB directory is set via `MEMORY_DB_DIR` (default: `.memory/`).
    ```
 
-4. Для машиночитаемого вывода используйте флаг `--json`:
+4. Use the `--json` flag for machine-readable output:
 
    ```sh
    mem-cli list facts --json
    ```
 
-## Разработка
+## Development
 
 ```sh
 cargo build
