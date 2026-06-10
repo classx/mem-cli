@@ -7,7 +7,7 @@
       "dependencies": [],
       "superseded_by": null,
       "links": [],
-      "mtime": "1780997228",
+      "mtime": "1781067954",
       "content_hash": "87024d24ae975efdb77afe39f6542467623d5ef00f9ee808a6bafff6b74d7744"
     },
     {
@@ -22,8 +22,34 @@
         "src/db.rs",
         "src/main.rs"
       ],
-      "mtime": "1781003854",
+      "mtime": "1781067954",
       "content_hash": "831bde33f0f653c7597ad54da2128310ae9980bbadae4460e35e224032d9958a"
+    },
+    {
+      "number": "0003",
+      "title": "RFC-0003: Связи между сущностями контекста (граф)",
+      "status": "draft",
+      "dependencies": [
+        "1",
+        "2"
+      ],
+      "superseded_by": null,
+      "links": [],
+      "mtime": "1781068079",
+      "content_hash": null
+    },
+    {
+      "number": "0004",
+      "title": "RFC-0004: Теги для записей контекста",
+      "status": "accepted",
+      "dependencies": [
+        "1",
+        "2"
+      ],
+      "superseded_by": null,
+      "links": [],
+      "mtime": "1781068142",
+      "content_hash": "a61382f2d538531c266c4816c45b927f7a5199fbf3d99bd675eff21580707a7c"
     }
   ]
 }
