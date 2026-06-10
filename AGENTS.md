@@ -15,12 +15,16 @@
   - `mem-cli decisions`
   - `mem-cli modules`
   - `mem-cli list commands`
+  - срез по теме (все сущности сразу): `mem-cli find <tag>`
 - По ходу работы дописывать новое:
   - стабильные факты: `mem-cli add facts "..."`
   - принятые технические решения: `mem-cli add decisions "..."`
   - проверенные команды build/test/lint: `mem-cli add commands "..."`
   - описание модулей: `mem-cli add modules "..."`
+  - тематическая разметка: `mem-cli tag <entity> <id> <tag>...`,
+    снятие — `mem-cli untag <entity> <id> <tag>`; обзор тем — `mem-cli tags`.
 - Удаление: `mem-cli delete <entity> <id>` (soft), `mem-cli purge <entity> <id>` (hard).
+- Проверка целостности тегов/БД: `mem-cli doctor` (`--fix` — безопасная автопочинка).
 - Для машиночитаемого вывода добавляйте флаг `--json`.
 
 Основной интерфейс к данным — `mem-cli`; прямой SQL только для отладки.
@@ -71,5 +75,7 @@ Project context is stored locally per developer, outside the repository:
 The project slug (`mem-cli-59eea7ceac446418`) is fixed in the `.mem-project` file.
 The path can be overridden via the `MEMORY_DB_DIR` variable.
 <!-- mem-cli:end -->
+
+
 
 
