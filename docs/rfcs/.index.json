@@ -41,15 +41,15 @@
     {
       "number": "0004",
       "title": "RFC-0004: Теги для записей контекста",
-      "status": "accepted",
+      "status": "implemented",
       "dependencies": [
         "1",
         "2"
       ],
       "superseded_by": null,
       "links": [],
-      "mtime": "1781068142",
-      "content_hash": "a61382f2d538531c266c4816c45b927f7a5199fbf3d99bd675eff21580707a7c"
+      "mtime": "1781068742",
+      "content_hash": "d1e063b3ad671d9da3d4d10b4e079381eff8618c57d6e5dc310947279a4c6c54"
     }
   ]
 }
