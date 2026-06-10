@@ -55,6 +55,47 @@ enum Command {
         #[arg(long)]
         hard: bool,
     },
+    /// Attach one or more tags to a record.
+    Tag {
+        entity: Entity,
+        id: i64,
+        /// One or more tags.
+        #[arg(required = true)]
+        tags: Vec<String>,
+    },
+    /// Remove a tag from a record.
+    Untag {
+        entity: Entity,
+        id: i64,
+        tag: String,
+        /// Physically remove the tag (instead of soft delete).
+        #[arg(long)]
+        hard: bool,
+    },
+    /// Find records by tag across all entities (a thematic context slice).
+    Find {
+        tag: String,
+        /// Narrow to a single entity.
+        #[arg(long)]
+        entity: Option<Entity>,
+        /// Output as JSON.
+        #[arg(long)]
+        json: bool,
+    },
+    /// Overview of all tags with record counts.
+    Tags {
+        #[arg(long)]
+        json: bool,
+    },
+    /// Diagnose tag/DB integrity.
+    Doctor {
+        /// Output as JSON.
+        #[arg(long)]
+        json: bool,
+        /// Auto-repair: remove dangling tags and tags with an invalid entity.
+        #[arg(long)]
+        fix: bool,
+    },
 }
 
 /// Supported entities.
@@ -95,6 +136,16 @@ fn main() -> Result<()> {
             content,
             hard,
         } => cmd_update(entity, id, &content, hard),
+        Command::Tag { entity, id, tags } => cmd_tag(entity, id, &tags),
+        Command::Untag {
+            entity,
+            id,
+            tag,
+            hard,
+        } => cmd_untag(entity, id, &tag, hard),
+        Command::Find { tag, entity, json } => cmd_find(&tag, entity, json),
+        Command::Tags { json } => cmd_tags(json),
+        Command::Doctor { json, fix } => cmd_doctor(json, fix),
     }
 }
 
@@ -292,21 +343,212 @@ fn cmd_update(entity: Entity, id: i64, content: &str, hard: bool) -> Result<()> 
     Ok(())
 }
 
+/// `tag` — attach one or more tags to a record.
+fn cmd_tag(entity: Entity, id: i64, tags: &[String]) -> Result<()> {
+    let conn = db::open()?;
+    db::apply_migrations(&conn)?;
+    for tag in tags {
+        match db::add_tag(&conn, entity.table(), id, tag)? {
+            db::TagOutcome::Added => println!("tagged {} id={id}: {tag}", entity.table()),
+            db::TagOutcome::AlreadyPresent => {
+                println!("already tagged {} id={id}: {tag}", entity.table())
+            }
+            db::TagOutcome::NoRecord => {
+                println!("no active record id={id} in {}", entity.table());
+                break;
+            }
+        }
+    }
+    Ok(())
+}
+
+/// `untag` — remove a tag from a record.
+fn cmd_untag(entity: Entity, id: i64, tag: &str, hard: bool) -> Result<()> {
+    let conn = db::open()?;
+    db::apply_migrations(&conn)?;
+    let n = db::remove_tag(&conn, entity.table(), id, tag, hard)?;
+    let mode = if hard { "hard" } else { "soft" };
+    if n > 0 {
+        println!("untagged ({mode}) {} id={id}: {tag}", entity.table());
+    } else {
+        println!("no tag {tag:?} on {} id={id}", entity.table());
+    }
+    Ok(())
+}
+
+/// `find` — list records carrying a tag, grouped by entity.
+fn cmd_find(tag: &str, entity: Option<Entity>, json: bool) -> Result<()> {
+    let conn = db::open()?;
+    db::apply_migrations(&conn)?;
+    let groups = db::find_by_tag(&conn, tag, entity.map(Entity::table))?;
+    if json {
+        let obj: serde_json::Map<String, serde_json::Value> = groups
+            .iter()
+            .map(|(name, records)| (name.clone(), records_to_json(records)))
+            .collect();
+        println!("{}", serde_json::Value::Object(obj));
+    } else if groups.is_empty() {
+        println!("(no records with tag {tag:?})");
+    } else {
+        for (name, records) in &groups {
+            println!("# {name}");
+            print_table(records);
+            println!();
+        }
+    }
+    Ok(())
+}
+
+/// `tags` — overview of all tags with record counts.
+fn cmd_tags(json: bool) -> Result<()> {
+    let conn = db::open()?;
+    db::apply_migrations(&conn)?;
+    let overview = db::tags_overview(&conn)?;
+    if json {
+        let items: Vec<serde_json::Value> = overview
+            .iter()
+            .map(|(tag, count)| serde_json::json!({ "tag": tag, "count": count }))
+            .collect();
+        println!("{}", serde_json::Value::Array(items));
+    } else if overview.is_empty() {
+        println!("(no tags)");
+    } else {
+        println!("{:>5}  TAG", "COUNT");
+        for (tag, count) in &overview {
+            println!("{count:>5}  {tag}");
+        }
+    }
+    Ok(())
+}
+
+/// `doctor` — diagnose tag/DB integrity; optionally auto-repair.
+fn cmd_doctor(json: bool, fix: bool) -> Result<()> {
+    let conn = db::open()?;
+    db::apply_migrations(&conn)?;
+    let report = db::doctor(&conn)?;
+
+    let removed = if fix && (!report.dangling.is_empty() || !report.invalid_entity.is_empty()) {
+        db::doctor_fix(&conn, &report)?
+    } else {
+        0
+    };
+
+    if json {
+        print_doctor_json(&report, fix, removed);
+    } else {
+        print_doctor(&report, fix, removed);
+    }
+
+    // Re-evaluate after a fix to determine the exit status.
+    let problems = if fix {
+        db::doctor(&conn)?.has_problems()
+    } else {
+        report.has_problems()
+    };
+    if problems {
+        std::process::exit(1);
+    }
+    Ok(())
+}
+
+fn print_doctor(report: &db::DoctorReport, fix: bool, removed: usize) {
+    println!("schema_version: {}", report.schema_version);
+    let dump = |label: &str, issues: &[db::TagIssue]| {
+        if !issues.is_empty() {
+            println!("{label} ({}):", issues.len());
+            for i in issues {
+                println!("  tag id={} {}:{} {:?}", i.id, i.entity, i.record_id, i.tag);
+            }
+        }
+    };
+    dump("dangling tags", &report.dangling);
+    dump("tags with invalid entity", &report.invalid_entity);
+    dump("dirty tags (would not normalize)", &report.dirty);
+    dump(
+        "tags on soft-deleted records (info)",
+        &report.on_soft_deleted,
+    );
+
+    println!("records (active / soft-deleted):");
+    for ((name, active), (_, soft)) in report
+        .active_counts
+        .iter()
+        .zip(report.soft_deleted_counts.iter())
+    {
+        println!("  {name}: {active} / {soft}");
+    }
+
+    if fix {
+        println!("fixed: removed {removed} tag(s)");
+    }
+    if report.has_problems() && !fix {
+        println!("status: problems found (run with --fix to repair)");
+    } else if !report.has_problems() {
+        println!("status: OK");
+    }
+}
+
+fn print_doctor_json(report: &db::DoctorReport, fix: bool, removed: usize) {
+    let issues_json = |issues: &[db::TagIssue]| -> serde_json::Value {
+        serde_json::Value::Array(
+            issues
+                .iter()
+                .map(|i| {
+                    serde_json::json!({
+                        "id": i.id,
+                        "entity": i.entity,
+                        "record_id": i.record_id,
+                        "tag": i.tag,
+                    })
+                })
+                .collect(),
+        )
+    };
+    let counts = |c: &[(String, i64)]| -> serde_json::Value {
+        serde_json::Value::Object(
+            c.iter()
+                .map(|(k, v)| (k.clone(), serde_json::json!(v)))
+                .collect(),
+        )
+    };
+    println!(
+        "{}",
+        serde_json::json!({
+            "schema_version": report.schema_version,
+            "dangling": issues_json(&report.dangling),
+            "invalid_entity": issues_json(&report.invalid_entity),
+            "dirty": issues_json(&report.dirty),
+            "on_soft_deleted": issues_json(&report.on_soft_deleted),
+            "active_counts": counts(&report.active_counts),
+            "soft_deleted_counts": counts(&report.soft_deleted_counts),
+            "has_problems": report.has_problems(),
+            "fixed": fix,
+            "removed": removed,
+        })
+    );
+}
+
+/// Build a JSON array from records.
+fn records_to_json(records: &[db::Record]) -> serde_json::Value {
+    serde_json::Value::Array(
+        records
+            .iter()
+            .map(|r| {
+                serde_json::json!({
+                    "id": r.id,
+                    "content": r.content,
+                    "created_at": r.created_at,
+                    "updated_at": r.updated_at,
+                    "deleted_at": r.deleted_at,
+                })
+            })
+            .collect(),
+    )
+}
+
 /// Print records as JSON.
 fn print_json(records: &[db::Record]) {
-    let items: Vec<serde_json::Value> = records
-        .iter()
-        .map(|r| {
-            serde_json::json!({
-                "id": r.id,
-                "content": r.content,
-                "created_at": r.created_at,
-                "updated_at": r.updated_at,
-                "deleted_at": r.deleted_at,
-            })
-        })
-        .collect();
-    println!("{}", serde_json::Value::Array(items));
+    println!("{}", records_to_json(records));
 }
 
 /// Print records as a simple table.
