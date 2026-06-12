@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-06-10
+
+### Added
+- **Tags** — lightweight thematic labels for any record of any entity
+  ([RFC-0004](docs/rfcs/0004.md)):
+  - `tag <entity> <id> <tag>...` — attach one or more tags (normalized to
+    `[a-z0-9._-]`, lowercase, max 64 chars; idempotent, reactivates a
+    soft-removed tag).
+  - `untag <entity> <id> <tag>` — soft-remove a tag (`--hard` to purge).
+  - `find <tag> [--entity <e>] [--json]` — recall a topic in one slice across
+    all entities, grouped by entity (hides soft-deleted records and tags).
+  - `tags [--json]` — overview of all tags with active record counts.
+  - `doctor [--json] [--fix]` — diagnose tag/DB integrity (dangling tags, invalid
+    entity, dirty tags, tags on soft-deleted records, schema version, record
+    counts); exits non-zero on problems; `--fix` removes dangling and
+    invalid-entity tags.
+- DB schema migration v2: new `tags` table with indexes. `purge` now
+  cascade-deletes a record's tags in the same transaction.
+- Unit tests for tag normalization, idempotent tagging/reactivation, `find`
+  grouping, tag overview counts, purge cascade, and `doctor` detection/repair.
+
 ## [1.4.0] - 2026-06-09
 
 ### Changed

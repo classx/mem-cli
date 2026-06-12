@@ -30,6 +30,9 @@ Four context entities:
 - `commands` — verified build/test/lint commands;
 - `modules` — short descriptions of modules and their responsibilities.
 
+Records can be grouped thematically with **tags** (any record, any entity), so a
+whole topic (e.g. `auth`) can be recalled in one slice with `mem-cli find <tag>`.
+
 ## Installation
 
 ```sh
@@ -88,6 +91,22 @@ mem-cli purge  facts 1   # hard delete: physically removes the row
 # update (delete the old record + add a new one)
 mem-cli update commands 1 "make build"          # soft delete old + add
 mem-cli update commands 1 "make build" --hard   # hard delete old + add
+
+# tags: thematic labels for any record
+mem-cli tag facts 1 auth security   # attach one or more tags
+mem-cli untag facts 1 security      # soft-remove a tag (--hard to purge)
+
+# context slice by topic (across all entities, grouped by entity)
+mem-cli find auth
+mem-cli find auth --entity facts    # narrow to one entity
+mem-cli find auth --json
+
+# overview of all tags with record counts
+mem-cli tags
+
+# diagnose tag/DB integrity (exit code 1 if problems found)
+mem-cli doctor
+mem-cli doctor --fix   # remove dangling tags and tags with an invalid entity
 ```
 
 > The primary interface for working with data is `mem-cli`. Direct SQL queries to
@@ -115,6 +134,8 @@ At the start of a session, an agent (for example, GitHub Copilot CLI) can read p
    - Save new stable facts: `mem-cli add facts "..."`.
    - Save accepted technical decisions: `mem-cli add decisions "..."`.
    - Save verified build/test/lint commands: `mem-cli add commands "..."`.
+   - Recall a topic in one slice: `mem-cli find <tag>`; tag new records as you
+     go: `mem-cli tag <entity> <id> <tag>`.
    - The DB directory is set via `MEMORY_DB_DIR` (default: `.memory/`).
    ```
 
