@@ -35,6 +35,40 @@ pub fn serve_stdio() -> Result<()> {
 }
 
 fn read_message<R: BufRead>(reader: &mut R) -> Result<Option<Value>> {
+    let first_non_whitespace = loop {
+        let buffer = reader
+            .fill_buf()
+            .context("failed to peek MCP message bytes")?;
+        if buffer.is_empty() {
+            return Ok(None);
+        }
+
+        let mut consumed = 0usize;
+        while consumed < buffer.len() && matches!(buffer[consumed], b' ' | b'\t' | b'\r' | b'\n') {
+            consumed += 1;
+        }
+
+        if consumed > 0 {
+            reader.consume(consumed);
+            continue;
+        }
+
+        break buffer[0];
+    };
+
+    if first_non_whitespace == b'{' || first_non_whitespace == b'[' {
+        let mut line = String::new();
+        let bytes = reader
+            .read_line(&mut line)
+            .context("failed to read MCP JSON line")?;
+        if bytes == 0 {
+            return Ok(None);
+        }
+        let message =
+            serde_json::from_str(line.trim()).context("failed to parse MCP JSON message")?;
+        return Ok(Some(message));
+    }
+
     let mut content_length: Option<usize> = None;
 
     loop {
@@ -618,6 +652,7 @@ fn error(id: Option<Value>, code: i64, message: &str) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Cursor;
 
     fn setup_conn() -> Connection {
         let conn = Connection::open_in_memory().expect("open in-memory db");
@@ -722,5 +757,30 @@ mod tests {
                 .iter()
                 .any(|r| r.get("uri") == Some(&json!("mem://commands")))
         );
+    }
+
+    #[test]
+    fn read_message_parses_content_length_frame() {
+        let request = json!({"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}});
+        let body = serde_json::to_string(&request).expect("serialize request");
+        let input = format!("Content-Length: {}\r\n\r\n{}", body.len(), body);
+        let mut reader = BufReader::new(Cursor::new(input.into_bytes()));
+
+        let parsed = read_message(&mut reader)
+            .expect("parse framed message")
+            .expect("message");
+        assert_eq!(parsed, request);
+    }
+
+    #[test]
+    fn read_message_parses_raw_json_message() {
+        let request = json!({"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}});
+        let body = serde_json::to_string(&request).expect("serialize request");
+        let mut reader = BufReader::new(Cursor::new(body.into_bytes()));
+
+        let parsed = read_message(&mut reader)
+            .expect("parse raw json message")
+            .expect("message");
+        assert_eq!(parsed, request);
     }
 }

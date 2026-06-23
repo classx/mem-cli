@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-06-23
+
+### Fixed
+- MCP stdio input parsing now supports both `Content-Length` framed messages
+  and newline-delimited raw JSON-RPC messages, preventing initialization
+  timeouts with MCP clients that do not use LSP-style headers.
+- Added MCP parser tests for both input formats to protect against regressions.
+
 ## [1.6.0] - 2026-06-23
 
 ### Added
