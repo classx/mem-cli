@@ -62,6 +62,7 @@ The `.mem-project` file is **committed to the repository**: the slug is shared b
 
 ```sh
 # initialize the project: create .mem-project marker, DB, and schema
+# also updates AGENTS.md and ensures the mem-cli MCP server in .mcp.json
 mem-cli init "Project Name"
 # name is optional — by default, the repository root directory name is used
 mem-cli init
@@ -172,6 +173,9 @@ This mode keeps the same SQLite storage and validation rules as CLI commands.
 - `mem://commands`
 
 ### Example client configuration (stdio)
+
+`mem-cli init` writes this entry to `.mcp.json` in the repository root
+automatically (merging into `mcpServers` without touching other servers):
 
 ```json
 {

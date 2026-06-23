@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-06-23
+
+### Added
+- `mem-cli init` now ensures the `mem-cli` MCP server entry exists in
+  `.mcp.json` at the repository root. The file is created if absent, and the
+  entry is merged into `mcpServers` without touching other servers.
+
 ## [1.6.2] - 2026-06-23
 
 ### Fixed
