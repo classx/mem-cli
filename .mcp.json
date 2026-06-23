@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "mem-cli": {
+      "command": "mem-cli",
+      "args": ["mcp"]
+    }
+  }
+}

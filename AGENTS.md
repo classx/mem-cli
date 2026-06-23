@@ -26,6 +26,9 @@
 - Удаление: `mem-cli delete <entity> <id>` (soft), `mem-cli purge <entity> <id>` (hard).
 - Проверка целостности тегов/БД: `mem-cli doctor` (`--fix` — безопасная автопочинка).
 - Для машиночитаемого вывода добавляйте флаг `--json`.
+- Для MCP-клиентов запускать локальный сервер: `mem-cli mcp` (stdio transport).
+  Ресурсы: `mem://facts`, `mem://decisions`, `mem://modules`, `mem://commands`.
+  Tools: `list_*`, `find_by_tag`, `add_*`, `tag_record`, `untag_record`, `doctor`.
 
 Основной интерфейс к данным — `mem-cli`; прямой SQL только для отладки.
 
@@ -75,7 +78,6 @@ Project context is stored locally per developer, outside the repository:
 The project slug (`mem-cli-59eea7ceac446418`) is fixed in the `.mem-project` file.
 The path can be overridden via the `MEMORY_DB_DIR` variable.
 <!-- mem-cli:end -->
-
 
 
 

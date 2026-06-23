@@ -48,8 +48,22 @@
       ],
       "superseded_by": null,
       "links": [],
-      "mtime": "1781068742",
+      "mtime": "1781068754",
       "content_hash": "d1e063b3ad671d9da3d4d10b4e079381eff8618c57d6e5dc310947279a4c6c54"
+    },
+    {
+      "number": "0005",
+      "title": "RFC-0005: MCP-сервер для mem-cli",
+      "status": "implemented",
+      "dependencies": [
+        "1",
+        "2",
+        "4"
+      ],
+      "superseded_by": null,
+      "links": [],
+      "mtime": "1782190470",
+      "content_hash": "6d15548410271b7a74732ffa6e4485ce3cbe80b6d7094e7dc70f1854bd03a162"
     }
   ]
 }

@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-06-23
+
+### Added
+- **MCP server (stdio transport)** via `mem-cli mcp`
+  ([RFC-0005](docs/rfcs/0005.md)).
+- MCP tools (v1): `list_facts`, `list_decisions`, `list_modules`,
+  `list_commands`, `find_by_tag`, `add_fact`, `add_decision`, `add_module`,
+  `add_command`, `tag_record`, `untag_record`, `doctor`, and `ping`.
+- MCP resources: `mem://facts`, `mem://decisions`, `mem://modules`,
+  `mem://commands` (through `resources/list` and `resources/read`).
+- Unit tests for MCP request handling, tool flow, and resource listing.
+
 ## [1.5.0] - 2026-06-10
 
 ### Added

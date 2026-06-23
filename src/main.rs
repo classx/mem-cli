@@ -5,6 +5,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 mod db;
+mod mcp;
 
 /// mem-cli — long-lived project context (Rust + SQLite).
 #[derive(Parser)]
@@ -96,6 +97,8 @@ enum Command {
         #[arg(long)]
         fix: bool,
     },
+    /// Run MCP server over stdio.
+    Mcp,
 }
 
 /// Supported entities.
@@ -146,6 +149,7 @@ fn main() -> Result<()> {
         Command::Find { tag, entity, json } => cmd_find(&tag, entity, json),
         Command::Tags { json } => cmd_tags(json),
         Command::Doctor { json, fix } => cmd_doctor(json, fix),
+        Command::Mcp => cmd_mcp(),
     }
 }
 
@@ -561,4 +565,9 @@ fn print_table(records: &[db::Record]) {
     for r in records {
         println!("{:>4}  {:<19}  {}", r.id, r.created_at, r.content);
     }
+}
+
+/// `mcp` — run the MCP server over stdio transport.
+fn cmd_mcp() -> Result<()> {
+    mcp::serve_stdio()
 }
