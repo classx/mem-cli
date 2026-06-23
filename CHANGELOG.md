@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.2] - 2026-06-23
+
+### Fixed
+- MCP stdio responses are now emitted as newline-delimited JSON-RPC instead of
+  `Content-Length` framed (LSP-style) messages. The previous output framing was
+  not understood by MCP stdio clients and caused connection/initialization to
+  hang. Input still accepts both framings for compatibility.
+- Added a `write_message` test asserting newline-delimited output without
+  `Content-Length` headers.
+
 ## [1.6.1] - 2026-06-23
 
 ### Fixed

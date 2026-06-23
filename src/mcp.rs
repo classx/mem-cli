@@ -110,11 +110,12 @@ fn read_message<R: BufRead>(reader: &mut R) -> Result<Option<Value>> {
 
 fn write_message<W: Write>(writer: &mut W, message: &Value) -> Result<()> {
     let body = serde_json::to_vec(message).context("failed to serialize MCP response")?;
-    write!(writer, "Content-Length: {}\r\n\r\n", body.len())
-        .context("failed to write MCP response header")?;
     writer
         .write_all(&body)
         .context("failed to write MCP response body")?;
+    writer
+        .write_all(b"\n")
+        .context("failed to write MCP response newline")?;
     Ok(())
 }
 
@@ -782,5 +783,21 @@ mod tests {
             .expect("parse raw json message")
             .expect("message");
         assert_eq!(parsed, request);
+    }
+
+    #[test]
+    fn write_message_emits_newline_delimited_json() {
+        let message = json!({"jsonrpc":"2.0","id":1,"result":{}});
+        let mut buffer = Vec::new();
+        write_message(&mut buffer, &message).expect("write message");
+
+        let output = String::from_utf8(buffer).expect("utf8 output");
+        assert!(
+            !output.contains("Content-Length"),
+            "output must not use LSP framing"
+        );
+        assert!(output.ends_with('\n'), "message must be newline-delimited");
+        let parsed: Value = serde_json::from_str(output.trim_end()).expect("parse written message");
+        assert_eq!(parsed, message);
     }
 }
