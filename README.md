@@ -145,6 +145,45 @@ At the start of a session, an agent (for example, GitHub Copilot CLI) can read p
    mem-cli list facts --json
    ```
 
+## MCP Server
+
+`mem-cli` can run as a local MCP server over stdio:
+
+```sh
+mem-cli mcp
+```
+
+This mode keeps the same SQLite storage and validation rules as CLI commands.
+
+### Available MCP tools (v1)
+
+- `list_facts`, `list_decisions`, `list_modules`, `list_commands`
+- `find_by_tag`
+- `add_fact`, `add_decision`, `add_module`, `add_command`
+- `tag_record`, `untag_record`
+- `doctor`
+- `ping`
+
+### Available MCP resources
+
+- `mem://facts`
+- `mem://decisions`
+- `mem://modules`
+- `mem://commands`
+
+### Example client configuration (stdio)
+
+```json
+{
+  "mcpServers": {
+    "mem-cli": {
+      "command": "mem-cli",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
 ## Development
 
 ```sh
