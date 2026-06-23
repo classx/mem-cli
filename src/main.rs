@@ -189,6 +189,7 @@ fn cmd_init(name: Option<&str>) -> Result<()> {
     db::apply_migrations(&conn)?;
 
     update_agents_md(&root, &slug)?;
+    update_mcp_json(&root)?;
 
     println!(
         "DB ready: {} (slug={slug}, schema v{})",
@@ -280,7 +281,42 @@ fn update_agents_md(root: &Path, slug: &str) -> Result<()> {
     Ok(())
 }
 
-/// `add` — add a record to an entity.
+/// Ensure the `mem-cli` MCP server entry exists in `.mcp.json` at the repo root.
+/// Creates the file if absent; merges the entry without touching other servers.
+fn update_mcp_json(root: &Path) -> Result<()> {
+    use serde_json::{Value, json};
+
+    let path = root.join(".mcp.json");
+    let mut config: Value = match std::fs::read_to_string(&path) {
+        Ok(s) if !s.trim().is_empty() => serde_json::from_str(&s)
+            .with_context(|| format!("failed to parse {}", path.display()))?,
+        _ => json!({}),
+    };
+
+    if !config.is_object() {
+        anyhow::bail!("{} must contain a JSON object", path.display());
+    }
+
+    let servers = config
+        .as_object_mut()
+        .unwrap()
+        .entry("mcpServers")
+        .or_insert_with(|| json!({}));
+    if !servers.is_object() {
+        anyhow::bail!("`mcpServers` in {} must be a JSON object", path.display());
+    }
+    servers.as_object_mut().unwrap().insert(
+        "mem-cli".to_string(),
+        json!({ "command": "mem-cli", "args": ["mcp"] }),
+    );
+
+    let mut content = serde_json::to_string_pretty(&config)
+        .with_context(|| format!("failed to serialize {}", path.display()))?;
+    content.push('\n');
+    std::fs::write(&path, content)
+        .with_context(|| format!("failed to write {}", path.display()))?;
+    Ok(())
+}
 fn cmd_add(entity: Entity, content: &str) -> Result<()> {
     let conn = db::open()?;
     db::apply_migrations(&conn)?;
@@ -570,4 +606,55 @@ fn print_table(records: &[db::Record]) {
 /// `mcp` — run the MCP server over stdio transport.
 fn cmd_mcp() -> Result<()> {
     mcp::serve_stdio()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::Value;
+
+    fn temp_root() -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("memmcp-{}", db::random_id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    #[test]
+    fn creates_mcp_json_when_absent() {
+        let root = temp_root();
+        update_mcp_json(&root).unwrap();
+        let v: Value =
+            serde_json::from_str(&std::fs::read_to_string(root.join(".mcp.json")).unwrap())
+                .unwrap();
+        assert_eq!(v["mcpServers"]["mem-cli"]["command"], "mem-cli");
+        assert_eq!(v["mcpServers"]["mem-cli"]["args"][0], "mcp");
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn preserves_other_servers() {
+        let root = temp_root();
+        let path = root.join(".mcp.json");
+        std::fs::write(
+            &path,
+            r#"{"mcpServers":{"other":{"command":"foo","args":[]}}}"#,
+        )
+        .unwrap();
+        update_mcp_json(&root).unwrap();
+        let v: Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+        assert_eq!(v["mcpServers"]["other"]["command"], "foo");
+        assert_eq!(v["mcpServers"]["mem-cli"]["command"], "mem-cli");
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn is_idempotent() {
+        let root = temp_root();
+        update_mcp_json(&root).unwrap();
+        let first = std::fs::read_to_string(root.join(".mcp.json")).unwrap();
+        update_mcp_json(&root).unwrap();
+        let second = std::fs::read_to_string(root.join(".mcp.json")).unwrap();
+        assert_eq!(first, second);
+        std::fs::remove_dir_all(&root).unwrap();
+    }
 }
